@@ -128,6 +128,10 @@ textarea{font-family:var(--f-body);font-size:15px;resize:vertical;min-height:110
 .sync-badge{font-family:var(--f-ui);font-size:14px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--muted)}
 .sync-badge.ok{color:var(--primary-d);border-color:var(--primary)}
 .sync-badge.warn{color:var(--coral-d);border-color:var(--coral)}
+.login-btn{font-family:var(--f-ui);font-size:15px;padding:8px 14px;border-radius:999px;border:0;background:var(--primary);color:var(--on)}
+.local-note{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 14px;background:var(--card);border:1.5px solid var(--sun);border-radius:14px;padding:8px 10px 8px 16px;font-family:var(--f-ui);font-size:16px}
+.note-x{border:0;background:var(--soft);color:var(--muted);border-radius:999px;width:30px;height:30px;font-size:17px}
+.must{margin:0;font-family:var(--f-ui);font-size:17px;color:var(--coral-d)}
 .sync-line{margin:0;font-family:var(--f-ui);font-size:17px}
 .sync-line b{font-weight:400;color:var(--primary-d)}
 
@@ -297,9 +301,15 @@ footer{text-align:center;font-family:var(--f-ui);font-size:13px;color:var(--mute
       <button class="tab" data-tab="records" role="tab" aria-selected="false">기록</button>
       <button class="tab" data-tab="settings" role="tab" aria-selected="false">설정</button>
     </nav>
-    <span id="syncBadge" class="sync-badge" hidden></span>
+    <button type="button" id="syncBadge" class="sync-badge" hidden></button>
+    <button type="button" class="login-btn" id="loginBtn">로그인</button>
     <button class="sound" id="soundBtn" aria-pressed="true">효과음 켜짐</button>
   </header>
+
+  <div class="local-note" id="localNote" hidden>
+    <span>지금은 이 컴퓨터에만 저장돼요. 여러 컴퓨터에서 같은 기록을 쓰려면 로그인해 주세요.</span>
+    <div class="btn-row"><button type="button" class="solid" id="noteLogin">로그인하기</button><button type="button" class="note-x" id="noteClose" aria-label="안내 닫기">×</button></div>
+  </div>
 
   <main>
     <section id="tab-draw">
@@ -782,9 +792,9 @@ function renderSettings(){
   if(RS.g==null||!gradeObj(RS.g))RS.g=(enabledGrades()[0]||st.grades[0]).g;
   const rg=gradeObj(RS.g);if(RS.c>rg.classes)RS.c=1;
   const reg=Object.keys(st.rosters||{}).filter(k=>(st.rosters[k]||'').trim()).sort();
-  let h='<div class="card"><h2>학교 정보</h2><div class="row2"><div class="field"><label class="lbl" for="sYear">학년도</label><input type="number" id="sYear" value="'+esc(st.year)+'"></div><div class="field"><label class="lbl" for="sSchool">학교명</label><input type="text" id="sSchool" value="'+esc(st.school)+'" placeholder="예: 한빛중학교"></div></div>'+
+  let h='<div class="card wide" id="syncCard"><h2>로그인 · 여러 컴퓨터에서 같이 쓰기</h2><p class="must">여러 컴퓨터에서 같은 기록을 쓰려면 로그인해야 해요. 로그인하지 않으면 지금 쓰는 이 컴퓨터에만 저장돼요.</p><p class="hint">로그인하면 설정과 추첨 기록이 온라인(Firebase)에 저장돼서 다른 컴퓨터에서 같은 아이디로 로그인하면 똑같이 보여요. 학생 명렬은 올라가지 않고 각 컴퓨터에만 남아요. 기록 속 학생 이름은 가운데 글자를 가려서(김민지 → 김*지) 올라가고, 명렬을 등록한 컴퓨터에서는 원래 이름으로 보여요.</p><div id="syncBody"></div></div>';
+  h+='<div class="card"><h2>학교 정보</h2><div class="row2"><div class="field"><label class="lbl" for="sYear">학년도</label><input type="number" id="sYear" value="'+esc(st.year)+'"></div><div class="field"><label class="lbl" for="sSchool">학교명</label><input type="text" id="sSchool" value="'+esc(st.school)+'" placeholder="예: 한빛중학교"></div></div>'+
     (st.school==='예시중학교'?'<p class="hint">처음 열면 예시 값이 들어 있어요. 우리 학교 정보로 바꿔 주세요.</p>':'')+'</div>';
-  h+='<div class="card wide"><h2>여러 컴퓨터에서 같이 쓰기</h2><p class="hint">아이디와 비밀번호로 로그인하면 설정과 추첨 기록이 온라인(Firebase)에 저장돼서 다른 컴퓨터에서도 똑같이 보여요. 학생 명렬은 올라가지 않고 이 컴퓨터에만 남아요. 기록 속 학생 이름은 가운데 글자를 가려서(김민지 → 김*지) 올라가고, 명렬을 등록한 컴퓨터에서는 원래 이름으로 보여요.</p><div id="syncBody"></div></div>';
   h+='<div class="card"><h2>백업과 복원</h2><p class="hint">로그인하지 않으면 기록은 지금 쓰는 이 브라우저에만 저장돼요. 다른 컴퓨터로 옮기거나 혹시 모를 상황에 대비해 백업 코드를 복사해 메모장 등에 보관하세요.</p>'+
     '<div class="btn-row"><button class="solid" id="copyBk">백업 코드 복사</button></div><div class="field"><label class="lbl" for="bkText">백업 코드 붙여넣기</label><textarea id="bkText" placeholder="복사해 둔 백업 코드를 여기에 붙여넣고 복원을 누르세요."></textarea></div><div class="btn-row"><button class="ghost" id="restoreBk">복원하기</button></div></div>';
   h+='<div class="card wide"><h2>수업 들어가는 학년과 수행평가</h2><p class="hint">수행평가는 한 줄에 하나씩 적어요. 예: 가창 - 아리랑</p><div class="grade-cards">'+
@@ -907,14 +917,18 @@ function errMsg(e){const c=(e&&e.code)||'';
 function hhmm(t){if(!t)return '-';const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
 function renderSyncBadge(){
   const b=$('#syncBadge');if(!b)return;
+  $('#loginBtn').hidden=!!SY.user;let dis=false;try{dis=localStorage.getItem('suhaeng-note-off')==='1'}catch(e){}$('#localNote').hidden=!!SY.user||dis;
   if(!SY.user){b.hidden=true;return}b.hidden=false;
   const m={on:['온라인 저장됨','ok'],saving:['저장 중…','wait'],syncing:['불러오는 중…','wait'],choose:['선택 필요','warn'],error:['저장 안 됨','warn'],off:['','wait']}[SY.status]||['',''];
   b.textContent=m[0];b.className='sync-badge '+m[1];b.title=idOf(SY.user)+' 계정';
 }
+function goLogin(){showTab('settings');setTimeout(()=>{const c=document.getElementById('syncCard');if(c)c.scrollIntoView({behavior:reduced?'auto':'smooth',block:'start'});const i=document.getElementById('sId')||document.getElementById('fbCfg');if(i)i.focus({preventScroll:true})},50)}
+$('#loginBtn').addEventListener('click',goLogin);$('#noteLogin').addEventListener('click',goLogin);$('#syncBadge').addEventListener('click',goLogin);
+$('#noteClose').addEventListener('click',()=>{try{localStorage.setItem('suhaeng-note-off','1')}catch(e){}$('#localNote').hidden=true});
 function renderSyncUI(){
   const el=document.getElementById('syncBody');if(!el)return;const cfg=loadCfg();let h='';
   if(!cfg){
-    h='<div class="field"><label class="lbl" for="fbCfg">Firebase 설정 붙여넣기 (이 컴퓨터에서 한 번만)</label><textarea id="fbCfg" rows="6" placeholder="const firebaseConfig = { apiKey: &quot;…&quot;, authDomain: &quot;…&quot;, projectId: &quot;…&quot;, … };"></textarea></div><div class="btn-row"><button class="solid" id="fbSave">설정 저장</button></div>';
+    h='<p class="hint"><b>1단계</b> 로그인 칸은 Firebase 설정을 붙여넣으면 나타나요. Firebase 콘솔 → 프로젝트 설정 → 내 앱에 있는 firebaseConfig 내용을 통째로 붙여넣으세요.</p><div class="field"><label class="lbl" for="fbCfg">Firebase 설정 붙여넣기 (이 컴퓨터에서 한 번만)</label><textarea id="fbCfg" rows="6" placeholder="const firebaseConfig = { apiKey: &quot;…&quot;, authDomain: &quot;…&quot;, projectId: &quot;…&quot;, … };"></textarea></div><div class="btn-row"><button class="solid" id="fbSave">설정 저장</button></div>';
   }else if(SY.loading||(!SY.app&&SY.status!=='error')){h='<p class="hint">온라인 저장에 연결하는 중이에요…</p>'}
   else if(!SY.user){
     h='<div class="row2"><div class="field"><label class="lbl" for="sId">아이디</label><input type="text" id="sId" autocomplete="username" placeholder="영문·숫자 3자 이상"></div><div class="field"><label class="lbl" for="sPw">비밀번호</label><input type="password" id="sPw" autocomplete="current-password" placeholder="6자 이상"></div></div>'+
@@ -940,7 +954,7 @@ async function syncClick(id){
   if(id==='sPush'){SY.pending=null;SY.status='saving';await upload();localStorage.setItem('suhaeng-fb-uid',SY.user.uid);listen();SY.status='on';renderSyncUI();renderSyncBadge();toast('이 컴퓨터 기록을 올렸어요');return}
 }
 
-renderHeader();renderSetup();if(loadCfg())fbInit();
+renderHeader();renderSetup();renderSyncBadge();if(loadCfg())fbInit();
 })();
 </script>
 
