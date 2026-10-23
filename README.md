@@ -22,3 +22,23 @@
 ---
 
 @yemusict
+
+## 여러 컴퓨터에서 같이 쓰기 (선택)
+
+설정 탭의 ‘여러 컴퓨터에서 같이 쓰기’에서 본인 Firebase 프로젝트 설정을 붙여넣고 로그인하면, 설정과 추첨 기록이 온라인에 저장됩니다.
+
+- 학생 명렬은 올라가지 않고 각 컴퓨터에만 남습니다.
+- 기록 속 학생 이름은 가운데 글자를 가려서(김민지 → 김*지) 올라가고, 명렬을 등록한 컴퓨터에서는 원래 이름으로 보입니다.
+
+Firestore 보안 규칙(로그인한 본인 데이터만 읽고 쓰기):
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
+```

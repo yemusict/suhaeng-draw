@@ -124,6 +124,13 @@ textarea{font-family:var(--f-body);font-size:15px;resize:vertical;min-height:110
 .pairs button{border:0;background:var(--soft);color:var(--muted);border-radius:999px;width:24px;height:24px;font-size:14px;line-height:1}
 .gbox.shuffling input{color:var(--muted)}
 
+/* sync */
+.sync-badge{font-family:var(--f-ui);font-size:14px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--muted)}
+.sync-badge.ok{color:var(--primary-d);border-color:var(--primary)}
+.sync-badge.warn{color:var(--coral-d);border-color:var(--coral)}
+.sync-line{margin:0;font-family:var(--f-ui);font-size:17px}
+.sync-line b{font-weight:400;color:var(--primary-d)}
+
 /* stage */
 .stage{display:flex;flex-direction:column;gap:18px}
 .stage:fullscreen{background:var(--bg);padding:24px;overflow:auto}
@@ -290,6 +297,7 @@ footer{text-align:center;font-family:var(--f-ui);font-size:13px;color:var(--mute
       <button class="tab" data-tab="records" role="tab" aria-selected="false">기록</button>
       <button class="tab" data-tab="settings" role="tab" aria-selected="false">설정</button>
     </nav>
+    <span id="syncBadge" class="sync-badge" hidden></span>
     <button class="sound" id="soundBtn" aria-pressed="true">효과음 켜짐</button>
   </header>
 
@@ -416,7 +424,7 @@ function sampleData(){
   };
 }
 function load(){try{const s=localStorage.getItem(KEY);if(s){const o=JSON.parse(s);if(o&&o.settings&&o.records)return o}}catch(e){}return null}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function save(noUp){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}if(!noUp&&typeof queueUpload==='function')queueUpload()}
 let S=load()||sampleData();
 function migrate(){S.groups=S.groups||{};S.apart=S.apart||{};S.settings.rosters=S.settings.rosters||{};S.records.forEach(r=>{if(!r.mode)r.mode='num'})}
 migrate();
@@ -776,7 +784,8 @@ function renderSettings(){
   const reg=Object.keys(st.rosters||{}).filter(k=>(st.rosters[k]||'').trim()).sort();
   let h='<div class="card"><h2>학교 정보</h2><div class="row2"><div class="field"><label class="lbl" for="sYear">학년도</label><input type="number" id="sYear" value="'+esc(st.year)+'"></div><div class="field"><label class="lbl" for="sSchool">학교명</label><input type="text" id="sSchool" value="'+esc(st.school)+'" placeholder="예: 한빛중학교"></div></div>'+
     (st.school==='예시중학교'?'<p class="hint">처음 열면 예시 값이 들어 있어요. 우리 학교 정보로 바꿔 주세요.</p>':'')+'</div>';
-  h+='<div class="card"><h2>백업과 복원</h2><p class="hint">기록은 지금 쓰는 이 브라우저에만 저장돼요. 다른 컴퓨터로 옮기거나 혹시 모를 상황에 대비해 백업 코드를 복사해 메모장 등에 보관하세요.</p>'+
+  h+='<div class="card wide"><h2>여러 컴퓨터에서 같이 쓰기</h2><p class="hint">아이디와 비밀번호로 로그인하면 설정과 추첨 기록이 온라인(Firebase)에 저장돼서 다른 컴퓨터에서도 똑같이 보여요. 학생 명렬은 올라가지 않고 이 컴퓨터에만 남아요. 기록 속 학생 이름은 가운데 글자를 가려서(김민지 → 김*지) 올라가고, 명렬을 등록한 컴퓨터에서는 원래 이름으로 보여요.</p><div id="syncBody"></div></div>';
+  h+='<div class="card"><h2>백업과 복원</h2><p class="hint">로그인하지 않으면 기록은 지금 쓰는 이 브라우저에만 저장돼요. 다른 컴퓨터로 옮기거나 혹시 모를 상황에 대비해 백업 코드를 복사해 메모장 등에 보관하세요.</p>'+
     '<div class="btn-row"><button class="solid" id="copyBk">백업 코드 복사</button></div><div class="field"><label class="lbl" for="bkText">백업 코드 붙여넣기</label><textarea id="bkText" placeholder="복사해 둔 백업 코드를 여기에 붙여넣고 복원을 누르세요."></textarea></div><div class="btn-row"><button class="ghost" id="restoreBk">복원하기</button></div></div>';
   h+='<div class="card wide"><h2>수업 들어가는 학년과 수행평가</h2><p class="hint">수행평가는 한 줄에 하나씩 적어요. 예: 가창 - 아리랑</p><div class="grade-cards">'+
     st.grades.map(g=>'<div class="gcard '+(g.on?'on':'off')+'"><label class="switch"><input type="checkbox" data-gon="'+g.g+'"'+(g.on?' checked':'')+'>'+g.g+'학년</label><div class="gbody"><div class="field"><label class="lbl" for="gc'+g.g+'">학급 수</label><input type="number" id="gc'+g.g+'" data-gcls="'+g.g+'" min="1" max="20" value="'+g.classes+'"></div><div class="field"><label class="lbl" for="gt'+g.g+'">수행평가 (한 줄에 하나)</label><textarea id="gt'+g.g+'" data-gtask="'+g.g+'">'+esc(g.tasks.join('\n'))+'</textarea></div></div></div>').join('')+'</div></div>';
@@ -786,9 +795,10 @@ function renderSettings(){
     '<div class="btn-row"><button class="solid" id="rSave">이 반 명렬 저장</button><button class="ghost" id="rClear">이 반 명렬 비우기</button></div>'+
     '<div><span class="lbl">등록된 반</span><div class="roster-list">'+(reg.length?reg.map(k=>{const p=k.split('-');return '<span class="chip">'+p[0]+'학년 '+p[1]+'반 · '+Object.keys(roster(p[0],p[1])).length+'명</span>'}).join(''):'<span class="hint">아직 없어요.</span>')+'</div></div></div>';
   h+='<div class="card wide"><h2>초기화</h2><div class="btn-row">'+(S.records.some(r=>r.example)||S.sampleRoster?'<button class="danger-btn" id="clrEx">예시 데이터 지우기</button>':'')+'<button class="danger-btn" id="clrAll">모든 추첨 기록 지우기</button></div></div>';
-  root.innerHTML=h;
+  root.innerHTML=h;renderSyncUI();
 }
 const T=$('#tab-settings');
+T.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='sPw')syncClick('sLogin')});
 T.addEventListener('change',e=>{
   const t=e.target,st=S.settings;
   if(t.id==='sYear'){st.year=parseInt(t.value,10)||st.year}
@@ -805,6 +815,7 @@ const armed={};
 function arm(btn,key,label,fn){if(!armed[key]){const old=btn.textContent;btn.textContent=label;armed[key]=setTimeout(()=>{delete armed[key];btn.textContent=old},3000);return}clearTimeout(armed[key]);delete armed[key];fn()}
 T.addEventListener('click',e=>{
   const t=e.target.closest('button');if(!t)return;const st=S.settings;
+  if(['fbSave','fbReset','sLogin','sSignup','sLogout','sNow','sRetry','sPull','sPush'].includes(t.id)){syncClick(t.id);return}
   if(t.id==='rSave'){st.rosters[RS.g+'-'+RS.c]=$('#rText').value.trim();if(RS.g+'-'+RS.c==='2-1')S.sampleRoster=false;save();renderSettings();toast(RS.g+'학년 '+RS.c+'반 명렬을 저장했어요 ('+Object.keys(roster(RS.g,RS.c)).length+'명)')}
   else if(t.id==='rClear'){arm(t,'rc','정말 비울까요?',()=>{delete st.rosters[RS.g+'-'+RS.c];save();renderSettings();toast('명렬을 비웠어요')})}
   else if(t.id==='copyBk'){const code=JSON.stringify(S);const ta=$('#bkText');const fall=()=>{ta.value=code;ta.focus();ta.select();toast('자동 복사가 막혀 있어요. 선택된 코드를 Ctrl+C로 복사하세요')};try{navigator.clipboard.writeText(code).then(()=>toast('백업 코드를 복사했어요. 메모장 등에 붙여넣어 보관하세요'),fall)}catch(err){fall()}}
@@ -814,7 +825,122 @@ T.addEventListener('click',e=>{
 });
 
 /* ---------- boot ---------- */
-renderHeader();renderSetup();
+
+/* ---------- online sync (Firebase) ---------- */
+const FB_KEY='suhaeng-fb-config',FB_VER='10.12.2',CLIENT=uid();
+const SY={app:null,auth:null,db:null,user:null,unsub:null,timer:null,status:'off',err:'',lastSync:0,pending:null,loading:false};
+function loadCfg(){try{return JSON.parse(localStorage.getItem(FB_KEY)||'null')}catch(e){return null}}
+function parseCfg(t){const m=String(t).match(/\{[\s\S]*\}/);if(!m)return null;const j=m[0].replace(/\/\/[^\n]*/g,'').replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g,'$1"$2":').replace(/'/g,'"').replace(/,\s*\}/g,'}');try{const o=JSON.parse(j);return o&&o.apiKey&&o.projectId?o:null}catch(e){return null}}
+function loadScript(src){return new Promise((ok,no)=>{const sc=document.createElement('script');sc.src=src;sc.onload=ok;sc.onerror=no;document.head.appendChild(sc)})}
+function idOf(u){return u&&u.email?u.email.replace(/@suhaeng-draw\.app$/,''):''}
+function maskName(n){n=String(n||'').trim();if(!n)return '';const c=[...n];if(c.length<=1)return n;if(c.length===2)return c[0]+'*';return c[0]+'*'.repeat(c.length-2)+c[c.length-1]}
+function maskLabel(x){x=String(x||'');return /^\d+번$/.test(x.trim())?x:maskName(x)}
+function unmask(x,names){x=String(x||'');if(!x.includes('*'))return x;const c=[...x];const hit=Object.values(names).filter(n=>{const k=[...n];return k.length===c.length&&k[0]===c[0]&&k[k.length-1]===c[c.length-1]});return hit.length===1?hit[0]:x}
+async function fbInit(){
+  if(SY.app)return true;const cfg=loadCfg();if(!cfg)return false;SY.loading=true;renderSyncUI();
+  try{
+    const base='https://www.gstatic.com/firebasejs/'+FB_VER+'/';
+    await loadScript(base+'firebase-app-compat.js');await loadScript(base+'firebase-auth-compat.js');await loadScript(base+'firebase-firestore-compat.js');
+    SY.app=firebase.initializeApp(cfg);SY.auth=firebase.auth();SY.db=firebase.firestore();
+    SY.auth.onAuthStateChanged(u=>{SY.user=u;if(u)startSync();else stopSync();renderSyncUI();renderSyncBadge()});
+  }catch(e){SY.status='error';SY.err='온라인 저장 기능을 불러오지 못했어요. 인터넷 연결이나 Firebase 설정을 확인해 주세요.';SY.app=null}
+  SY.loading=false;renderSyncUI();return !!SY.app;
+}
+function docRef(){return SY.db.collection('users').doc(SY.user.uid)}
+function payload(){
+  const groups={};Object.keys(S.groups||{}).forEach(k=>{const g=S.groups[k];groups[k]={count:g.count,max:g.max,members:(g.members||[]).map(m=>m.map(maskLabel))}});
+  const data={settings:{year:S.settings.year,school:S.settings.school,grades:S.settings.grades},
+    records:S.records.map(r=>Object.assign({},r,{startName:maskName(r.startName),absent:r.absent.map(a=>Object.assign({},a,{name:maskName(a.name)})),groups:r.groups?r.groups.map(g=>g.map(maskLabel)):undefined})),
+    groups,apart:S.apart||{},sound:S.sound};
+  return {v:1,client:CLIENT,updatedAt:Date.now(),data:JSON.stringify(data)};
+}
+function applyCloud(d){
+  let c;try{c=JSON.parse(d.data)}catch(e){return}
+  S.settings=Object.assign({},c.settings,{rosters:S.settings.rosters||{}});
+  S.records=(c.records||[]).map(r=>{const names=roster(r.grade,r.cls);return Object.assign({},r,{
+    startName:r.mode!=='group'&&names[r.start]?names[r.start]:(r.startName||''),
+    absent:(r.absent||[]).map(a=>Object.assign({},a,{name:names[a.no]||a.name||''})),
+    groups:r.groups?r.groups.map(g=>g.map(x=>unmask(x,names))):r.groups})});
+  S.groups={};Object.keys(c.groups||{}).forEach(k=>{const p=k.split('-');const names=roster(p[0],p[1]);const g=c.groups[k];S.groups[k]={count:g.count,max:g.max,members:(g.members||[]).map(m=>m.map(x=>unmask(x,names)))}});
+  S.apart=c.apart||{};if(typeof c.sound==='boolean')S.sound=c.sound;
+  SY.lastSync=d.updatedAt||Date.now();save(true);refreshAll();
+}
+function refreshAll(){
+  renderHeader();const a=document.activeElement;const typing=a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+  if(!$('#tab-records').hidden)renderRecords();
+  if(!$('#tab-settings').hidden&&!typing)renderSettings();
+  if(!$('#tab-draw').hidden&&!$('#setupView').hidden&&!typing&&!spinning)renderSetup();
+}
+async function startSync(){
+  SY.status='syncing';SY.err='';renderSyncUI();renderSyncBadge();
+  try{
+    const snap=await docRef().get();
+    const known=localStorage.getItem('suhaeng-fb-uid')===SY.user.uid;
+    if(snap.exists){
+      const localReal=S.records.some(r=>!r.example);
+      if(!known&&localReal){SY.pending=snap.data();SY.status='choose';renderSyncUI();renderSyncBadge();return}
+      applyCloud(snap.data());
+    }else await upload();
+    localStorage.setItem('suhaeng-fb-uid',SY.user.uid);listen();SY.status='on';
+  }catch(e){SY.status='error';SY.err=errMsg(e)}
+  renderSyncUI();renderSyncBadge();
+}
+function listen(){if(SY.unsub)SY.unsub();SY.unsub=docRef().onSnapshot(s=>{if(!s.exists)return;const d=s.data();if(d.client===CLIENT||(d.updatedAt||0)<=SY.lastSync)return;applyCloud(d);renderSyncBadge();toast('다른 컴퓨터에서 바뀐 내용을 불러왔어요')},e=>{SY.status='error';SY.err=errMsg(e);renderSyncUI();renderSyncBadge()})}
+function stopSync(){if(SY.unsub)SY.unsub();SY.unsub=null;clearTimeout(SY.timer);SY.status='off';SY.pending=null}
+function queueUpload(){if(!SY.user||SY.status!=='on'&&SY.status!=='saving')return;SY.status='saving';renderSyncBadge();clearTimeout(SY.timer);SY.timer=setTimeout(upload,1200)}
+async function upload(){
+  try{const p=payload();await docRef().set(p);SY.lastSync=p.updatedAt;if(SY.status==='saving')SY.status='on'}
+  catch(e){SY.status='error';SY.err=errMsg(e)}
+  renderSyncBadge();renderSyncUI();
+}
+function errMsg(e){const c=(e&&e.code)||'';
+  if(/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c))return '아이디 또는 비밀번호가 맞지 않아요.';
+  if(/email-already-in-use/.test(c))return '이미 있는 아이디예요. 로그인을 눌러 주세요.';
+  if(/weak-password/.test(c))return '비밀번호는 6자 이상으로 정해 주세요.';
+  if(/too-many-requests/.test(c))return '여러 번 실패해서 잠시 막혔어요. 몇 분 뒤 다시 해 주세요.';
+  if(/network|unavailable/.test(c))return '인터넷 연결을 확인해 주세요.';
+  if(/permission-denied/.test(c))return 'Firestore 보안 규칙이 저장을 막고 있어요. 설정 안내의 규칙을 붙여넣었는지 확인해 주세요.';
+  if(/operation-not-allowed/.test(c))return 'Firebase에서 이메일/비밀번호 로그인을 켜 주세요.';
+  if(/api-key|invalid-api|configuration/.test(c))return 'Firebase 설정값이 맞지 않아요. 설정을 다시 붙여넣어 주세요.';
+  return '문제가 생겼어요 ('+(c||(e&&e.message)||'알 수 없음')+')';
+}
+function hhmm(t){if(!t)return '-';const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+function renderSyncBadge(){
+  const b=$('#syncBadge');if(!b)return;
+  if(!SY.user){b.hidden=true;return}b.hidden=false;
+  const m={on:['온라인 저장됨','ok'],saving:['저장 중…','wait'],syncing:['불러오는 중…','wait'],choose:['선택 필요','warn'],error:['저장 안 됨','warn'],off:['','wait']}[SY.status]||['',''];
+  b.textContent=m[0];b.className='sync-badge '+m[1];b.title=idOf(SY.user)+' 계정';
+}
+function renderSyncUI(){
+  const el=document.getElementById('syncBody');if(!el)return;const cfg=loadCfg();let h='';
+  if(!cfg){
+    h='<div class="field"><label class="lbl" for="fbCfg">Firebase 설정 붙여넣기 (이 컴퓨터에서 한 번만)</label><textarea id="fbCfg" rows="6" placeholder="const firebaseConfig = { apiKey: &quot;…&quot;, authDomain: &quot;…&quot;, projectId: &quot;…&quot;, … };"></textarea></div><div class="btn-row"><button class="solid" id="fbSave">설정 저장</button></div>';
+  }else if(SY.loading||(!SY.app&&SY.status!=='error')){h='<p class="hint">온라인 저장에 연결하는 중이에요…</p>'}
+  else if(!SY.user){
+    h='<div class="row2"><div class="field"><label class="lbl" for="sId">아이디</label><input type="text" id="sId" autocomplete="username" placeholder="영문·숫자 3자 이상"></div><div class="field"><label class="lbl" for="sPw">비밀번호</label><input type="password" id="sPw" autocomplete="current-password" placeholder="6자 이상"></div></div>'+
+      '<div class="btn-row"><button class="solid" id="sLogin">로그인</button><button class="ghost" id="sSignup">처음이에요 · 계정 만들기</button><button class="linkbtn" id="fbReset">Firebase 설정 바꾸기</button></div>';
+  }else if(SY.status==='choose'){
+    h='<p class="note" style="text-align:left">이 컴퓨터에도 기록이 있고, 온라인에도 기록이 있어요. 어느 쪽을 쓸까요? 고르지 않은 쪽은 덮어써져요.</p><div class="btn-row"><button class="solid" id="sPull">온라인 기록 불러오기</button><button class="ghost" id="sPush">이 컴퓨터 기록 올리기</button><button class="linkbtn" id="sLogout">로그아웃</button></div>';
+  }else{
+    h='<p class="sync-line">로그인됨 <b>'+esc(idOf(SY.user))+'</b> · 마지막 저장 '+hhmm(SY.lastSync)+'</p><div class="btn-row"><button class="ghost" id="sNow">지금 저장</button><button class="ghost" id="sLogout">로그아웃</button></div>';
+  }
+  if(SY.status==='error'&&SY.err)h+='<p class="note" style="text-align:left">'+esc(SY.err)+'</p>'+(SY.user?'<div class="btn-row"><button class="ghost" id="sRetry">다시 시도</button></div>':'')+(cfg&&!SY.app?'<div class="btn-row"><button class="linkbtn" id="fbReset">Firebase 설정 바꾸기</button></div>':'');
+  el.innerHTML=h;
+}
+function idEmail(){const id=($('#sId').value||'').trim().toLowerCase();if(!/^[a-z0-9._-]{3,30}$/.test(id)){SY.err='아이디는 영문 소문자·숫자 3~30자로 적어 주세요.';SY.status='error';renderSyncUI();return null}return id+'@suhaeng-draw.app'}
+async function syncClick(id){
+  if(id==='fbSave'){const c=parseCfg($('#fbCfg').value);if(!c){toast('설정값을 읽지 못했어요. firebaseConfig의 { } 부분을 통째로 붙여넣어 주세요');return}try{localStorage.setItem(FB_KEY,JSON.stringify(c))}catch(e){}SY.status='off';SY.err='';renderSyncUI();fbInit();return}
+  if(id==='fbReset'){if(SY.user)await SY.auth.signOut();try{localStorage.removeItem(FB_KEY)}catch(e){}location.reload();return}
+  if(id==='sLogin'||id==='sSignup'){const em=idEmail();if(!em)return;const pw=$('#sPw').value;if(pw.length<6){SY.status='error';SY.err='비밀번호는 6자 이상이에요.';renderSyncUI();return}
+    SY.err='';SY.status='off';try{if(id==='sLogin')await SY.auth.signInWithEmailAndPassword(em,pw);else await SY.auth.createUserWithEmailAndPassword(em,pw);toast(id==='sLogin'?'로그인했어요':'계정을 만들었어요')}catch(e){SY.status='error';SY.err=errMsg(e);renderSyncUI()}return}
+  if(id==='sLogout'){await SY.auth.signOut();toast('로그아웃했어요. 이 컴퓨터의 기록은 그대로 남아요');return}
+  if(id==='sNow'){clearTimeout(SY.timer);SY.status='saving';renderSyncBadge();await upload();toast('온라인에 저장했어요');return}
+  if(id==='sRetry'){startSync();return}
+  if(id==='sPull'){const d=SY.pending;SY.pending=null;applyCloud(d);localStorage.setItem('suhaeng-fb-uid',SY.user.uid);listen();SY.status='on';renderSyncUI();renderSyncBadge();toast('온라인 기록을 불러왔어요');return}
+  if(id==='sPush'){SY.pending=null;SY.status='saving';await upload();localStorage.setItem('suhaeng-fb-uid',SY.user.uid);listen();SY.status='on';renderSyncUI();renderSyncBadge();toast('이 컴퓨터 기록을 올렸어요');return}
+}
+
+renderHeader();renderSetup();if(loadCfg())fbInit();
 })();
 </script>
 
