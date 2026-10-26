@@ -14,35 +14,29 @@
 - 모둠마다 인원 조정, 랜덤 모둠 만들기
 - 반별 평가일·시작 번호·결석생 기록과 반별 미응시 학생 목록
 - 학생 명렬 등록(선택) 시 번호와 이름 함께 표시
-- 백업 코드 복사·복원
+- 6자리 숫자 코드로 여러 컴퓨터에서 같은 기록 쓰기
 
 ## 데이터 저장
 
-기본적으로 모든 기록은 사용하는 브라우저에만 저장되며 외부 서버로 전송되지 않습니다. 다른 기기로 옮길 때는 설정 탭의 백업 코드를 이용하거나, 아래 6자리 코드 연결을 켜세요.
+코드를 연결하지 않으면 모든 기록은 사용하는 브라우저에만 저장됩니다. 여러 컴퓨터에서 쓰려면 아래 6자리 코드를 연결하세요.
 
 ## 여러 컴퓨터에서 같이 쓰기 (6자리 코드)
 
-설정 탭의 ‘여러 컴퓨터에서 같이 쓰기’에서 6자리 숫자 코드를 정하면, 설정과 추첨 기록이 온라인(Firebase Firestore)에 저장됩니다. 다른 컴퓨터에서 같은 코드를 넣으면 같은 기록이 보입니다.
+설정 탭의 ‘여러 컴퓨터에서 같이 쓰기’에서 6자리 숫자 코드를 정하면, 설정과 추첨 기록이 온라인(Firebase Realtime Database)에 저장됩니다. 다른 컴퓨터에서 같은 코드를 넣으면 같은 기록이 보입니다.
 
 - 기록은 코드에서 만든 키로 브라우저에서 암호화(AES-GCM, PBKDF2)한 뒤 올라갑니다.
 - 학생 명렬은 올라가지 않고 각 컴퓨터에만 남습니다.
 - 기록 속 학생 이름은 가운데 글자를 가려서(김민지 → 김*지) 올라가고, 명렬을 등록한 컴퓨터에서는 원래 이름으로 보입니다.
 - 6자리 숫자는 비밀번호보다 맞히기 쉬우니, 남이 알기 쉬운 숫자는 피하세요.
 
-Firestore 보안 규칙:
+Realtime Database 보안 규칙 (`rules` 안에 `suhaeng` 항목을 추가):
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /codes/{id} {
-      allow get: if id.size() == 64;
-      allow create, update: if id.size() == 64
-        && request.resource.data.keys().hasOnly(['v','client','updatedAt','iv','ct'])
-        && request.resource.data.ct is string
-        && request.resource.data.ct.size() < 900000;
-      allow list, delete: if false;
-    }
+```json
+"suhaeng": {
+  "$id": {
+    ".read": "$id.matches(/^[0-9a-f]{64}$/)",
+    ".write": "$id.matches(/^[0-9a-f]{64}$/) && newData.exists()",
+    ".validate": "newData.hasChildren(['v','client','updatedAt','iv','ct']) && newData.child('ct').isString() && newData.child('ct').val().length < 900000"
   }
 }
 ```

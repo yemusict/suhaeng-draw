@@ -150,6 +150,8 @@ textarea{font-family:var(--f-body);font-size:15px;resize:vertical;min-height:110
 .local-note{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 14px;background:var(--card);border:1.5px solid var(--sun);border-radius:14px;padding:8px 10px 8px 16px;font-family:var(--f-ui);font-size:16px}
 .note-x{border:0;background:var(--soft);color:var(--muted);border-radius:999px;width:30px;height:30px;font-size:17px}
 .must{margin:0;font-family:var(--f-ui);font-size:17px;color:var(--coral-d)}
+#syncBody{display:flex;flex-direction:column;gap:12px}
+#syncBody .btn-row{margin:0}
 .sync-line{margin:0;font-family:var(--f-ui);font-size:17px}
 .sync-line b{font-weight:400;color:var(--primary-d)}
 
@@ -841,8 +843,6 @@ function renderSettings(){
   let h='<div class="card wide" id="syncCard"><h2>여러 컴퓨터에서 같이 쓰기</h2><p class="must">여러 컴퓨터에서 같은 기록을 쓰려면 6자리 숫자 코드를 연결해야 해요. 연결하지 않으면 지금 쓰는 이 컴퓨터에만 저장돼요.</p><p class="hint">코드를 연결하면 설정과 추첨 기록이 코드로 암호화돼 온라인에 저장되고, 다른 컴퓨터에서 같은 코드를 넣으면 똑같이 보여요. 학생 명렬은 올라가지 않고 각 컴퓨터에만 남아요. 기록 속 학생 이름은 가운데 글자를 가려서(김민지 → 김*지) 올라가고, 명렬을 등록한 컴퓨터에서는 원래 이름으로 보여요.</p><div id="syncBody"></div></div>';
   h+='<div class="card"><h2>학교 정보</h2><div class="row2"><div class="field"><label class="lbl" for="sYear">학년도</label><input type="number" id="sYear" value="'+esc(st.year)+'"></div><div class="field"><label class="lbl" for="sSchool">학교명</label><input type="text" id="sSchool" value="'+esc(st.school)+'" placeholder="예: 한빛중학교"></div></div>'+
     (st.school==='예시중학교'?'<p class="hint">처음 열면 예시 값이 들어 있어요. 우리 학교 정보로 바꿔 주세요.</p>':'')+'</div>';
-  h+='<div class="card"><h2>백업과 복원</h2><p class="hint">코드를 연결하지 않으면 기록은 지금 쓰는 이 브라우저에만 저장돼요. 다른 컴퓨터로 옮기거나 혹시 모를 상황에 대비해 백업 코드를 복사해 메모장 등에 보관하세요.</p>'+
-    '<div class="btn-row"><button class="solid" id="copyBk">백업 코드 복사</button></div><div class="field"><label class="lbl" for="bkText">백업 코드 붙여넣기</label><textarea id="bkText" placeholder="복사해 둔 백업 코드를 여기에 붙여넣고 복원을 누르세요."></textarea></div><div class="btn-row"><button class="ghost" id="restoreBk">복원하기</button></div></div>';
   h+='<div class="card wide"><h2>수업 들어가는 학년과 수행평가</h2><p class="hint">수행평가는 한 줄에 하나씩 적어요. 예: 가창 - 아리랑</p><div class="grade-cards">'+
     st.grades.map(g=>'<div class="gcard '+(g.on?'on':'off')+'"><label class="switch"><input type="checkbox" data-gon="'+g.g+'"'+(g.on?' checked':'')+'>'+g.g+'학년</label><div class="gbody"><div class="field"><label class="lbl" for="gc'+g.g+'">학급 수</label><input type="number" id="gc'+g.g+'" data-gcls="'+g.g+'" min="1" max="20" value="'+g.classes+'"></div><div class="field"><label class="lbl" for="gt'+g.g+'">수행평가 (한 줄에 하나)</label><textarea id="gt'+g.g+'" data-gtask="'+g.g+'">'+esc(g.tasks.join('\n'))+'</textarea></div></div></div>').join('')+'</div></div>';
   h+='<div class="card wide"><h2>학생 명렬 등록 <span class="hint">(선택)</span></h2><p class="hint">등록하면 추첨 화면에 번호와 이름이 함께 나오고, 마지막 번호도 자동으로 채워져요. 모둠을 명렬 번호순으로 채울 수도 있어요. 한 줄에 한 명씩 “번호 이름” 형태로 적어요. 엑셀에서 번호·이름 두 열을 복사해 붙여넣어도 돼요.</p>'+
@@ -875,17 +875,23 @@ T.addEventListener('click',e=>{
   if(['sLoad','sNew','sDisc','sNow','sRetry','sPull','sPush'].includes(t.id)){syncClick(t.id);return}
   if(t.id==='rSave'){st.rosters[RS.g+'-'+RS.c]=$('#rText').value.trim();if(RS.g+'-'+RS.c==='2-1')S.sampleRoster=false;save();renderSettings();toast(RS.g+'학년 '+RS.c+'반 명렬을 저장했어요 ('+Object.keys(roster(RS.g,RS.c)).length+'명)')}
   else if(t.id==='rClear'){arm(t,'rc','정말 비울까요?',()=>{delete st.rosters[RS.g+'-'+RS.c];save();renderSettings();toast('명렬을 비웠어요')})}
-  else if(t.id==='copyBk'){const code=JSON.stringify(S);const ta=$('#bkText');const fall=()=>{ta.value=code;ta.focus();ta.select();toast('자동 복사가 막혀 있어요. 선택된 코드를 Ctrl+C로 복사하세요')};try{navigator.clipboard.writeText(code).then(()=>toast('백업 코드를 복사했어요. 메모장 등에 붙여넣어 보관하세요'),fall)}catch(err){fall()}}
-  else if(t.id==='restoreBk'){const v=$('#bkText').value.trim();let o;try{o=JSON.parse(v)}catch(err){toast('백업 코드 형식이 맞지 않아요. 복사한 코드를 그대로 붙여넣어 주세요');return}if(!o||!o.settings||!Array.isArray(o.records)){toast('백업 코드 형식이 맞지 않아요');return}arm(t,'rb','지금 데이터를 덮어써요. 한 번 더 누르세요',()=>{S=o;migrate();save();renderHeader();renderSettings();toast('복원했어요')})}
   else if(t.id==='clrEx'){clearExamples();renderSettings();toast('예시 데이터를 지웠어요')}
   else if(t.id==='clrAll'){arm(t,'ca','정말 모든 기록을 지울까요?',()=>{S.records=[];save();renderSettings();toast('모든 추첨 기록을 지웠어요')})}
 });
 
 /* ---------- boot ---------- */
 
-/* ---------- online sync: 6-digit code (Firebase Firestore) ---------- */
+/* ---------- online sync: 6-digit code (Firebase Realtime Database) ---------- */
 /* 온라인 저장소 설정. Firebase 콘솔 → 프로젝트 설정 → 내 앱의 firebaseConfig 값을 넣으면 코드 연결이 켜져요. */
-const FB_CONFIG=null;
+const FB_CONFIG={
+  apiKey:"AIzaSyBOrGs_nE8nzsMuzy2N0caKgCZv8P0UUIw",
+  authDomain:"matsasoksangyeong-quiz.firebaseapp.com",
+  databaseURL:"https://matsasoksangyeong-quiz-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"matsasoksangyeong-quiz",
+  storageBucket:"matsasoksangyeong-quiz.firebasestorage.app",
+  messagingSenderId:"991132414403",
+  appId:"1:991132414403:web:9b22d3305b97cd37818d76"
+};
 const FB_VER='10.12.2',CLIENT=uid(),CODE_KEY='suhaeng-code',MOD_KEY='suhaeng-local-mod';
 const SY={db:null,code:'',id:'',key:null,unsub:null,timer:null,status:'off',err:'',lastSync:0,pending:null,loading:false};
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
@@ -910,10 +916,11 @@ async function decryptDoc(d){const pt=await crypto.subtle.decrypt({name:'AES-GCM
 async function fbInit(){
   if(SY.db)return true;if(!FB_CONFIG)return false;
   const base='https://www.gstatic.com/firebasejs/'+FB_VER+'/';
-  await loadScript(base+'firebase-app-compat.js');await loadScript(base+'firebase-firestore-compat.js');
-  if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);SY.db=firebase.firestore();return true;
+  await loadScript(base+'firebase-app-compat.js');await loadScript(base+'firebase-database-compat.js');
+  const app=firebase.apps.find(a=>a.name==='suhaeng')||firebase.initializeApp(FB_CONFIG,'suhaeng');SY.db=app.database();return true;
 }
-function docRef(){return SY.db.collection('codes').doc(SY.id)}
+function docRef(){return SY.db.ref('suhaeng/'+SY.id)}
+const snapOk=s=>!!s&&s.exists();
 function plainData(){
   const groups={};Object.keys(S.groups||{}).forEach(k=>{const g=S.groups[k];groups[k]={count:g.count,max:g.max,sizes:g.sizes||[],members:(g.members||[]).map(m=>m.map(maskLabel))}});
   return JSON.stringify({settings:{year:S.settings.year,school:S.settings.school,grades:S.settings.grades},
@@ -945,16 +952,16 @@ async function connect(code,mode){
     await fbInit();const k=await deriveKeys(code);SY.code=code;SY.id=k.id;SY.key=k.key;
     const snap=await docRef().get();
     if(mode==='new'){
-      if(snap.exists)throw {code:'taken'};
+      if(snapOk(snap))throw {code:'taken'};
       await upload(true);
     }else if(mode==='load'){
-      if(!snap.exists)throw {code:'nocode'};
-      const str=await decryptDoc(snap.data()).catch(()=>{throw {code:'decrypt'}});
-      if(S.records.some(r=>!r.example)){SY.pending={str,at:snap.data().updatedAt};SY.status='choose';SY.loading=false;renderSyncUI();renderSyncBadge();return}
-      applyPlain(str,snap.data().updatedAt);
+      if(!snapOk(snap))throw {code:'nocode'};
+      const str=await decryptDoc(snap.val()).catch(()=>{throw {code:'decrypt'}});
+      if(S.records.some(r=>!r.example)){SY.pending={str,at:snap.val().updatedAt};SY.status='choose';SY.loading=false;renderSyncUI();renderSyncBadge();return}
+      applyPlain(str,snap.val().updatedAt);
     }else{
-      if(!snap.exists)await upload(true);
-      else{const d=snap.data();const localMod=+(lsGet(MOD_KEY)||0);
+      if(!snapOk(snap))await upload(true);
+      else{const d=snap.val();const localMod=+(lsGet(MOD_KEY)||0);
         if(localMod>(d.updatedAt||0))await upload(true);
         else applyPlain(await decryptDoc(d).catch(()=>{throw {code:'decrypt'}}),d.updatedAt);}
     }
@@ -962,9 +969,9 @@ async function connect(code,mode){
   }catch(e){SY.status='error';SY.err=errMsg(e);if(mode!=='resume'){SY.code='';SY.id='';SY.key=null}}
   SY.loading=false;renderSyncUI();renderSyncBadge();
 }
-function listen(){if(SY.unsub)SY.unsub();SY.unsub=docRef().onSnapshot(async s=>{if(!s.exists)return;const d=s.data();if(d.client===CLIENT||(d.updatedAt||0)<=SY.lastSync)return;
+function listen(){if(SY.unsub)SY.unsub();const ref=docRef();const h=ref.on('value',async s=>{if(!snapOk(s))return;const d=s.val();if(d.client===CLIENT||(d.updatedAt||0)<=SY.lastSync)return;
   try{applyPlain(await decryptDoc(d),d.updatedAt);renderSyncBadge();toast('다른 컴퓨터에서 바뀐 내용을 불러왔어요')}catch(e){}},
-  e=>{SY.status='error';SY.err=errMsg(e);renderSyncUI();renderSyncBadge()})}
+  e=>{SY.status='error';SY.err=errMsg(e);renderSyncUI();renderSyncBadge()});SY.unsub=()=>ref.off('value',h)}
 function disconnect(){if(SY.unsub)SY.unsub();SY.unsub=null;clearTimeout(SY.timer);SY.status='off';SY.pending=null;SY.code='';SY.id='';SY.key=null;SY.err='';lsSet(CODE_KEY,null)}
 function connected(){return !!SY.key&&(SY.status==='on'||SY.status==='saving')}
 function queueUpload(){lsSet(MOD_KEY,String(Date.now()));if(!connected())return;SY.status='saving';renderSyncBadge();clearTimeout(SY.timer);SY.timer=setTimeout(()=>upload(),1200)}
@@ -973,13 +980,13 @@ async function upload(throwErr){
   catch(e){if(throwErr)throw e;SY.status='error';SY.err=errMsg(e)}
   renderSyncBadge();renderSyncUI();
 }
-function errMsg(e){const c=(e&&e.code)||'';
+function errMsg(e){const c=String((e&&(e.code||e.message))||'');
   if(c==='taken')return '이미 다른 분이 쓰고 있는 코드예요. 다른 6자리 숫자를 골라 주세요.';
   if(c==='nocode')return '이 코드로 저장된 기록이 없어요. 숫자를 다시 확인하거나, 처음이라면 ‘새 코드 만들기’를 눌러 주세요.';
   if(c==='decrypt')return '기록을 열지 못했어요. 코드를 다시 확인해 주세요.';
   if(c==='crypto')return '이 브라우저에서는 코드 연결을 쓸 수 없어요. 크롬 최신 버전으로 열어 주세요.';
-  if(/network|unavailable/.test(c))return '인터넷 연결을 확인해 주세요.';
-  if(/permission-denied/.test(c))return '온라인 저장소 규칙이 저장을 막고 있어요. 관리하는 선생님께 알려 주세요.';
+  if(/network|unavailable|offline/i.test(c))return '인터넷 연결을 확인해 주세요.';
+  if(/permission[-_ ]denied/i.test(c))return '온라인 저장소 규칙이 저장을 막고 있어요. 관리하는 선생님께 알려 주세요.';
   if(!c)return '온라인 저장소에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.';
   return '문제가 생겼어요 ('+c+')';
 }
