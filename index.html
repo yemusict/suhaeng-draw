@@ -90,7 +90,8 @@ textarea{font-family:var(--f-body);font-size:15px;resize:vertical;min-height:110
 .num:hover{border-color:var(--primary)}
 .num b{font-family:var(--f-display);font-weight:400;font-size:21px;line-height:1}
 .num small{font-size:10.5px;color:var(--muted);max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.num em{position:absolute;top:3px;right:4px;font-style:normal;font-family:var(--f-ui);font-size:11px}
+.num em{position:absolute;top:3px;left:0;right:0;text-align:center;font-style:normal;font-family:var(--f-ui);font-size:10.5px;line-height:1.1}
+.num:has(em) b{margin-top:9px}
 .num.r-sick{background:var(--violet);border-color:var(--violet);color:var(--on)}
 .num.r-ok{background:var(--mint);border-color:var(--mint);color:var(--on)}
 .num.r-no{background:var(--coral);border-color:var(--coral);color:var(--on)}
