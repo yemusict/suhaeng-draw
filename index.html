@@ -345,10 +345,10 @@ footer{text-align:center;font-family:var(--f-ui);font-size:13px;color:var(--mute
         </div>
         <div class="card step">
           <div class="step-h"><span class="step-no">2</span><h2>결석생과 없는 번호</h2></div>
-          <p class="hint">사유를 먼저 고르고 번호를 누르세요. 같은 사유로 한 번 더 누르면 취소돼요.</p>
+          <p class="hint">버튼을 먼저 고르고 번호를 누르세요. 같은 버튼으로 한 번 더 누르면 취소돼요.</p>
           <div class="brushes">
             <div class="field"><span class="lbl">오늘 결석 · 미응시 학생에 올라가요</span><div id="reasonSeg" class="seg"></div></div>
-            <div class="field"><span class="lbl">없는 번호 · 반별로 저장돼 계속 빠져요</span><div id="exclSeg" class="seg"></div></div>
+            <div class="field"><span class="lbl">전학·위탁 등 없는 번호 · 반별로 저장돼 계속 빠져요</span><div id="exclSeg" class="seg"></div></div>
           </div>
           <div id="numGrid" class="numgrid"></div>
           <div id="absentSummary" class="absent-sum"></div>
@@ -419,7 +419,6 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const KEY='suhaeng-draw-v1';
 const REASONS={sick:'질병',ok:'인정',no:'미인정'};
-const EXCL={moved:'전학',out:'위탁',etc:'기타'};
 const reduced=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
@@ -537,7 +536,7 @@ function renderSetup(){
   $('#dirField').hidden=D.mode!=='num';
   seg($('#dirSeg'),[{v:1,t:'번호 올라가며 (17→18→19…)'},{v:-1,t:'번호 내려가며 (17→16→15…)'}],D.dir,v=>{D.dir=+v;renderSetup()});
   seg($('#reasonSeg'),Object.keys(REASONS).map(k=>({v:k,t:REASONS[k],cls:'r-'+k})),D.brush,v=>{D.brush=v;renderSetup()});
-  seg($('#exclSeg'),Object.keys(EXCL).map(k=>({v:'x-'+k,t:EXCL[k],cls:'r-x'})),D.brush,v=>{D.brush=v;renderSetup()});
+  seg($('#exclSeg'),[{v:'x',t:'없는 번호',cls:'r-x'}],D.brush,v=>{D.brush=v;renderSetup()});
   renderGrid();renderGroups();
   const ex=S.records.find(r=>r.grade==D.grade&&r.cls==D.cls&&r.task===D.task);
   $('#overwriteNote').textContent=ex?(D.grade+'학년 '+D.cls+'반 「'+D.task+'」은 '+fmtDate(ex.date)+'에 이미 추첨했어요. 다시 추첨하면 그 기록이 새 결과로 바뀌어요.'):'';
@@ -548,20 +547,20 @@ function renderGrid(){
   const names=roster(D.grade,D.cls);const X=exclMap();let h='';
   for(let n=1;n<=D.last;n++){
     const x=X[n],r=x?null:D.absent[n];
-    const cls=x?' r-x':(r?' r-'+r:''),tag=x?EXCL[x]:(r?REASONS[r]:'');
+    const cls=x?' r-x':(r?' r-'+r:''),tag=x?'제외':(r?REASONS[r]:'');
     h+='<button type="button" class="num'+cls+'" data-n="'+n+'" aria-pressed="'+(!!(x||r))+'" aria-label="'+n+'번'+(names[n]?' '+esc(names[n]):'')+(x?' 제외 '+tag:(r?' 결석 '+tag:''))+'">'+(tag?'<em>'+tag+'</em>':'')+'<b>'+n+'</b>'+(names[n]?'<small>'+esc(names[n])+'</small>':'')+'</button>';
   }
   $('#numGrid').innerHTML=h;if(D.mode==='group'&&$('#gTotal'))setTimeout(()=>{if(!shuffling)renderGroupsTotal()},0);
   const list=Object.keys(D.absent).map(Number).filter(n=>!X[n]).sort((a,b)=>a-b);
   const xl=Object.keys(X).map(Number).filter(n=>n<=D.last).sort((a,b)=>a-b);
   let sum=list.length?('결석 '+list.length+'명 · '+list.map(n=>'<span class="chip r-'+D.absent[n]+'">'+n+'번'+(names[n]?' '+esc(names[n]):'')+'<em>'+REASONS[D.absent[n]]+'</em></span>').join('')):'결석생이 없으면 바로 추첨하면 돼요.';
-  if(xl.length)sum+='<span class="sum-break"></span>제외 '+xl.length+'명 · '+xl.map(n=>'<span class="chip xchip">'+n+'번<em>'+EXCL[X[n]]+'</em></span>').join('');
+  if(xl.length)sum+='<span class="sum-break"></span>제외 '+xl.length+'명 · '+xl.map(n=>'<span class="chip xchip">'+n+'번</span>').join('');
   $('#absentSummary').innerHTML=sum;
 }
 $('#numGrid').addEventListener('click',e=>{
   const b=e.target.closest('.num');if(!b)return;const n=+b.dataset.n;const X=exclMap();
-  if(D.brush.startsWith('x-')){const k=D.brush.slice(2);if(X[n]===k)delete X[n];else{X[n]=k;delete D.absent[n]}save();tone(X[n]?330:440,.08,'triangle',.08);renderGrid();return}
-  if(X[n]){toast(n+'번은 '+EXCL[X[n]]+'(으)로 제외된 번호예요. 풀려면 ‘없는 번호’의 '+EXCL[X[n]]+'을(를) 고르고 다시 누르세요');return}
+  if(D.brush==='x'){if(X[n])delete X[n];else{X[n]=1;delete D.absent[n]}save();tone(X[n]?330:440,.08,'triangle',.08);renderGrid();return}
+  if(X[n]){toast(n+'번은 없는 번호로 빠져 있어요. 풀려면 ‘없는 번호’를 고르고 다시 누르세요');return}
   if(D.absent[n]===D.brush)delete D.absent[n];else D.absent[n]=D.brush;tone(D.absent[n]?660:440,.06,'triangle',.08);renderGrid();
 });
 $('#taskSel').addEventListener('change',e=>{D.task=e.target.value;renderSetup()});
@@ -743,7 +742,7 @@ function saveRecord(target,names){
   const ex=S.records.find(r=>r.grade==D.grade&&r.cls==D.cls&&r.task===D.task);
   const rec={id:ex?ex.id:uid(),mode:D.mode,grade:D.grade,cls:D.cls,task:D.task,date:D.date,last:D.last,start:target,
     absent:Object.keys(D.absent).map(Number).filter(n=>!exclMap()[n]).sort((a,b)=>a-b).map(n=>({no:n,reason:D.absent[n],name:names[n]||'',done:false})),
-    excluded:Object.keys(exclMap()).map(Number).filter(n=>n<=D.last).sort((a,b)=>a-b).map(n=>({no:n,reason:exclMap()[n]})),saved:Date.now()};
+    excluded:Object.keys(exclMap()).map(Number).filter(n=>n<=D.last).sort((a,b)=>a-b).map(n=>({no:n})),saved:Date.now()};
   if(D.mode==='group'){rec.order=D.order.slice();rec.groups=gcfg().members.map(m=>m.map(x=>x.trim()).filter(Boolean))}
   else{rec.startName=names[target]||'';rec.dir=D.dir}
   if(ex)S.records[S.records.indexOf(ex)]=rec;else S.records.push(rec);save();
@@ -812,7 +811,7 @@ function renderRecords(){
         if(!r){h+='<tr class="none"><td class="cls">'+c+'반</td><td colspan="5">아직 추첨하지 않았어요<button class="linkbtn" data-go="'+go.g+'|'+c+'|'+esc(task)+'">이 반 추첨하러 가기</button></td></tr>';continue}
         const isG=r.mode==='group';
         const startCell=isG?('<span class="start-badge">'+r.start+'<small>모둠</small></span><span class="start-name">순서 '+(r.order||[]).join(' → ')+'</span>'):('<span class="start-badge">'+r.start+'</span>'+(r.startName?'<span class="start-name">'+esc(r.startName)+'</span>':''));
-        h+='<tr><td class="cls">'+c+'반'+(r.example?' <span class="tag">예시</span>':'')+(isG?' <span class="tag blue">모둠</span>':'')+'</td><td>'+fmtDate(r.date)+'</td><td>'+(r.last-r.absent.length-(r.excluded||[]).length)+' / '+(r.last-(r.excluded||[]).length)+'명</td><td>'+startCell+'</td><td>'+((r.absent.length||(r.excluded||[]).length)?'<div class="chips">'+r.absent.map(a=>chipHTML(r,a)).join('')+(r.excluded||[]).map(x=>'<span class="chip xchip">'+x.no+'번<em>'+EXCL[x.reason]+'</em></span>').join('')+'</div>':'<span class="hint">결석 없음</span>')+'</td><td><button class="del" data-del="'+r.id+'">삭제</button></td></tr>';
+        h+='<tr><td class="cls">'+c+'반'+(r.example?' <span class="tag">예시</span>':'')+(isG?' <span class="tag blue">모둠</span>':'')+'</td><td>'+fmtDate(r.date)+'</td><td>'+(r.last-r.absent.length-(r.excluded||[]).length)+' / '+(r.last-(r.excluded||[]).length)+'명</td><td>'+startCell+'</td><td>'+((r.absent.length||(r.excluded||[]).length)?'<div class="chips">'+r.absent.map(a=>chipHTML(r,a)).join('')+(r.excluded||[]).map(x=>'<span class="chip xchip">'+x.no+'번<em>제외</em></span>').join('')+'</div>':'<span class="hint">결석 없음</span>')+'</td><td><button class="del" data-del="'+r.id+'">삭제</button></td></tr>';
       }
       h+='</tbody></table></div></div>';
     });
