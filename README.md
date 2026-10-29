@@ -34,9 +34,9 @@ Realtime Database 보안 규칙 (`rules` 안에 `suhaeng` 항목을 추가):
 ```json
 "suhaeng": {
   "$id": {
-    ".read": "$id.matches(/^[0-9a-f]{64}$/)",
-    ".write": "$id.matches(/^[0-9a-f]{64}$/) && newData.exists()",
-    ".validate": "newData.hasChildren(['v','client','updatedAt','iv','ct']) && newData.child('ct').isString() && newData.child('ct').val().length < 900000"
+    ".read": "$id.length === 64",
+    ".write": "$id.length === 64 && newData.exists()",
+    ".validate": "newData.hasChildren(['v', 'client', 'updatedAt', 'iv', 'ct']) && newData.child('ct').isString()"
   }
 }
 ```

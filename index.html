@@ -984,7 +984,7 @@ function errMsg(e){const c=String((e&&(e.code||e.message))||'');
   if(c==='decrypt')return '기록을 열지 못했어요. 코드를 다시 확인해 주세요.';
   if(c==='crypto')return '이 브라우저에서는 코드 연결을 쓸 수 없어요. 크롬 최신 버전으로 열어 주세요.';
   if(/network|unavailable|offline/i.test(c))return '인터넷 연결을 확인해 주세요.';
-  if(/permission[-_ ]denied/i.test(c))return '온라인 저장소 규칙이 저장을 막고 있어요. 관리하는 선생님께 알려 주세요.';
+  if(/permission[-_ ]denied/i.test(c))return '온라인 저장소 규칙이 저장을 막고 있어요. Firebase 콘솔 → Realtime Database → 규칙에 suhaeng 항목이 게시됐는지 확인해 주세요.';
   if(!c)return '온라인 저장소에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.';
   return '문제가 생겼어요 ('+c+')';
 }
